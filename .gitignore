@@ -40,3 +40,5 @@ luacov.stats.out
 .luarocks/
 lua_modules/
 .directory
+
+PLAN.md
