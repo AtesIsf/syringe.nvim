@@ -214,7 +214,11 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
   local selection_text = M.get_selection_text(bufnr, start_row, start_col, end_row, end_col)
 
   -- 3. Construct job command
-  local cmd = { syringe.config.cmd, "--prompt", prompt }
+  local final_prompt = prompt
+  if syringe.config.prompt_suffix and syringe.config.prompt_suffix ~= "" then
+    final_prompt = prompt .. syringe.config.prompt_suffix
+  end
+  local cmd = { syringe.config.cmd, "--prompt", final_prompt }
 
   local stdout_data = {}
   local stderr_data = {}

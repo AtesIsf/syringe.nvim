@@ -43,3 +43,4 @@ lua_modules/
 
 # Git-ignored local agent handoff files
 AGENT_HANDOFF.md
+PLAN.md

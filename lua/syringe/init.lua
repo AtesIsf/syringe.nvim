@@ -10,6 +10,7 @@ M.config = {
   cmd = "agy",
   timeout = 120000, -- 2 minutes
   default_keymaps = true,
+  prompt_suffix = "\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.",
 }
 
 ---Configure the syringe plugin and set up keymaps if enabled

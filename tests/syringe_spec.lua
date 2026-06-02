@@ -4,24 +4,29 @@ local syringe_job = require("syringe.job")
 describe("syringe config", function()
   before_each(function()
     -- Reset default config before each test
-    syringe.setup({
+    syringe.config = {
       cmd = "agy",
       timeout = 120000,
-    })
+      default_keymaps = true,
+      prompt_suffix = "\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.",
+    }
   end)
 
   it("should load with default configuration options", function()
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(120000, syringe.config.timeout)
+    assert.are.equal("\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.", syringe.config.prompt_suffix)
   end)
 
   it("should allow overriding all configuration options", function()
     syringe.setup({
       cmd = "agy",
       timeout = 60000,
+      prompt_suffix = "custom suffix",
     })
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(60000, syringe.config.timeout)
+    assert.are.equal("custom suffix", syringe.config.prompt_suffix)
   end)
 
   it("should allow partial configuration overrides", function()
@@ -30,6 +35,7 @@ describe("syringe config", function()
     })
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(30000, syringe.config.timeout)
+    assert.are.equal("\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.", syringe.config.prompt_suffix)
   end)
 end)
 
@@ -153,6 +159,7 @@ describe("asynchronous CLI job execution", function()
     local syringe_mod = require("syringe")
     syringe_mod.setup({
       cmd = "./tests/mock_agy.sh",
+      prompt_suffix = "",
     })
 
     -- Select the first line
@@ -178,6 +185,38 @@ describe("asynchronous CLI job execution", function()
       "line two: world",
     }, lines)
   end)
+
+  it("should append the prompt_suffix to the prompt when executing the job", function()
+    local syringe_mod = require("syringe")
+    syringe_mod.setup({
+      cmd = "./tests/mock_agy.sh",
+      prompt_suffix = " - injected_suffix",
+    })
+
+    -- Select the first line
+    vim.cmd("normal! 1G_V")
+    local start_row, start_col, end_row, end_col = syringe_job.get_visual_range()
+    local start_mark_id, end_mark_id = syringe_job.create_marks(bufnr, start_row, start_col, end_row, end_col)
+
+    -- Trigger the job
+    local job_id = syringe_job.run_refactor("base prompt", bufnr, start_mark_id, end_mark_id)
+    assert.is_not_nil(job_id)
+
+    -- Wait for the job to complete
+    local exit_codes = vim.fn.jobwait({ job_id }, 2000)
+    assert.are.equal(0, exit_codes[1])
+
+    -- Wait briefly for callbacks
+    vim.wait(100, function() return false end)
+
+    -- Assert buffer content has the appended suffix
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    assert.are.same({
+      "LINE ONE: HELLO - base prompt - injected_suffix",
+      "line two: world",
+    }, lines)
+  end)
+
 
   it("should notify on CLI failure and leave the buffer content unchanged", function()
     local syringe_mod = require("syringe")
@@ -257,6 +296,7 @@ describe("user interface and feedback", function()
     local syringe_mod = require("syringe")
     syringe_mod.setup({
       cmd = "./tests/mock_agy.sh",
+      prompt_suffix = "",
     })
 
     -- 1. Mock vim.ui.input to simulate user entering a prompt
