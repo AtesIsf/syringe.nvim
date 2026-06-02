@@ -1,12 +1,42 @@
-# Swap and temporary files
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.directory
+
+# Editor swap, backup, and session files
 *.swp
 *.swo
 *~
+*.bak
 .netrwhist
+Session.vim
+.projectile
 
-# Logs and debug outputs
+# IDEs and LSP configurations
+.vscode/
+.idea/
+.luarc.json
+.lsp-workspace/
+
+# Tags and code navigation
+tags
+tags.lock
+tags.temp
+doc/tags
+
+# Logs, testing, and coverage
 *.log
+.coverage/
+luacov.report.out
+luacov.stats.out
+.pytest_cache/
 
-# System files
-.DS_Store
-Thumbs.db
+# Luarocks and Lua package manager folders
+.luarocks/
+lua_modules/
+.directory
