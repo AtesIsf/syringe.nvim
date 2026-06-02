@@ -41,4 +41,5 @@ luacov.stats.out
 lua_modules/
 .directory
 
-PLAN.md
+# Git-ignored local agent handoff files
+AGENT_HANDOFF.md
