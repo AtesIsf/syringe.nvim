@@ -1,8 +1,9 @@
 # syringe.nvim
 
 This project was heavily inspired by the Primeagen's 99 plugin, but is specific to Google Antigravity.
+I would suggest checking that project out first.
 
-`syringe.nvim` is a lightweight, asynchronous Neovim plugin designed to refactor and transform your code in-place using Google's `agy` agentic CLI tool. Highlight a range of code, enter a prompt instruction (e.g. *"migrate this function from using mutexes to semaphores"* or *"implement this API endpoint"*), and let `syringe.nvim` replace the buffer range with the refactored result.
+`syringe.nvim` is a lightweight, asynchronous Neovim plugin designed to refactor and transform your code in-place using Google's `agy` agentic CLI tool. Highlight a range of code, enter a prompt instruction (e.g. *"migrate this function from using X to Y"* or *"implement this API endpoint"*), and let `syringe.nvim` replace the buffer range with the refactored result.
 
 ---
 
@@ -19,7 +20,7 @@ This project was heavily inspired by the Primeagen's 99 plugin, but is specific 
 ## Requirements
 
 *   Neovim `0.8+`
-*   `agy` CLI tool installed and available in your shell `$PATH`
+*   `agy` (Google Antigravity) CLI tool installed and available in your shell `$PATH`
 
 ---
 
@@ -65,17 +66,6 @@ You can also run these operations via standard command-line commands:
 
 *   `:SyringeRun` — Runs the prompt replacement on the selected visual selection.
 *   `:SyringeCancel` — Cancels the active refactoring job running in the current buffer.
-
----
-
-## How it Works Under the Hood
-
-1.  **Coordinates Capture:** When you start visual mode and run `:SyringeRun`, the plugin captures the visual mode coordinates, drops out of visual mode, and sets up dynamic `extmarks` surrounding the selection boundaries.
-2.  **Prompt:** Prompts you for input using `vim.ui.input`.
-3.  **Background Process:** Spawns `agy --prompt "<your input>"` in the workspace root directory.
-4.  **Stdin Piping:** Pipes your selected code directly into the process's standard input (`stdin`) and closes the channel to trigger execution.
-5.  **Status Indicator:** Displays a loading spinner animation in the command-line echo area.
-6.  **Substitution:** Upon process exit `0`, the plugin extracts the code inside markdown blocks (if any) and replaces the selection in-place using `vim.api.nvim_buf_set_text`.
 
 ---
 
