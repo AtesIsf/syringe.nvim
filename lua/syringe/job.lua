@@ -320,6 +320,13 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
               table.remove(replacement_lines)
             end
             vim.api.nvim_buf_set_text(bufnr, s_row, s_col, e_row, e_col, replacement_lines)
+            if syringe.config.auto_indent and #replacement_lines > 0 then
+              local start_line = s_row + 1
+              local end_line = s_row + #replacement_lines
+              vim.api.nvim_buf_call(bufnr, function()
+                vim.cmd(string.format("silent! normal! %dG=%dG", start_line, end_line))
+              end)
+            end
           else
             vim.notify("Syringe Error: No markdown code blocks found in agent output. Buffer unchanged.", vim.log.levels.ERROR)
           end

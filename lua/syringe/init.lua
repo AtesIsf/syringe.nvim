@@ -4,6 +4,7 @@ local M = {}
 ---@field cmd string Path to the CLI executable
 ---@field timeout number Timeout in milliseconds for the job
 ---@field default_keymaps boolean Setup default keymaps in setup()
+---@field auto_indent boolean Auto-indent the refactored code block
 
 ---@type SyringeConfig
 M.config = {
@@ -11,6 +12,7 @@ M.config = {
   timeout = 120000, -- 2 minutes
   default_keymaps = true,
   prompt_suffix = "\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.",
+  auto_indent = true,
 }
 
 ---Configure the syringe plugin and set up keymaps if enabled

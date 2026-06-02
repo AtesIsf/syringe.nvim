@@ -9,6 +9,7 @@ describe("syringe config", function()
       timeout = 120000,
       default_keymaps = true,
       prompt_suffix = "\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.",
+      auto_indent = true,
     }
   end)
 
@@ -16,6 +17,7 @@ describe("syringe config", function()
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(120000, syringe.config.timeout)
     assert.are.equal("\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.", syringe.config.prompt_suffix)
+    assert.is_true(syringe.config.auto_indent)
   end)
 
   it("should allow overriding all configuration options", function()
@@ -23,10 +25,12 @@ describe("syringe config", function()
       cmd = "agy",
       timeout = 60000,
       prompt_suffix = "custom suffix",
+      auto_indent = false,
     })
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(60000, syringe.config.timeout)
     assert.are.equal("custom suffix", syringe.config.prompt_suffix)
+    assert.is_false(syringe.config.auto_indent)
   end)
 
   it("should allow partial configuration overrides", function()
@@ -36,6 +40,7 @@ describe("syringe config", function()
     assert.are.equal("agy", syringe.config.cmd)
     assert.are.equal(30000, syringe.config.timeout)
     assert.are.equal("\n\nCRITICAL: Do not write, create, or edit any files on disk. Do not run commands. Only generate the requested refactoring. Output your answer inside markdown code blocks.", syringe.config.prompt_suffix)
+    assert.is_true(syringe.config.auto_indent)
   end)
 end)
 
@@ -592,6 +597,7 @@ describe("markdown code block extraction", function()
 
     syringe.setup({
       cmd = "./tests/mock_agy_markdown.sh",
+      auto_indent = false,
     })
 
     vim.cmd("normal! 1G_V")
@@ -692,5 +698,97 @@ describe("workspace context gathering", function()
     
     assert.is_true(has_job, "Should include job.lua context")
     assert.is_false(has_init, "Should not include active file init.lua context")
+  end)
+end)
+
+describe("auto-indentation", function()
+  local bufnr
+
+  before_each(function()
+    bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+      "line one: hello",
+      "line two: world",
+    })
+  end)
+
+  after_each(function()
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
+  end)
+
+  it("should trigger '=' indentation command on the replaced range if auto_indent is true", function()
+    local syringe_mod = require("syringe")
+    syringe_mod.setup({
+      cmd = "./tests/mock_agy.sh",
+      prompt_suffix = "",
+      auto_indent = true,
+    })
+
+    local cmd_called = false
+    local cmd_string = ""
+    local old_cmd = vim.cmd
+    vim.cmd = function(cmd, ...)
+      if type(cmd) == "string" and string.find(cmd, "G=") then
+        cmd_called = true
+        cmd_string = cmd
+      end
+      return old_cmd(cmd, ...)
+    end
+
+    -- Select the first line
+    vim.cmd("normal! 1G_V")
+    local start_row, start_col, end_row, end_col = syringe_job.get_visual_range()
+    local start_mark_id, end_mark_id = syringe_job.create_marks(bufnr, start_row, start_col, end_row, end_col)
+
+    local job_id = syringe_job.run_refactor("add some suffix", bufnr, start_mark_id, end_mark_id)
+    assert.is_not_nil(job_id)
+
+    local exit_codes = vim.fn.jobwait({ job_id }, 2000)
+    assert.are.equal(0, exit_codes[1])
+
+    vim.wait(100, function() return false end)
+
+    vim.cmd = old_cmd
+
+    assert.is_true(cmd_called, "Indentation command was not called")
+    assert.are.equal("silent! normal! 1G=1G", cmd_string)
+  end)
+
+  it("should not trigger '=' indentation command if auto_indent is false", function()
+    local syringe_mod = require("syringe")
+    syringe_mod.setup({
+      cmd = "./tests/mock_agy.sh",
+      prompt_suffix = "",
+      auto_indent = false,
+    })
+
+    local cmd_called = false
+    local old_cmd = vim.cmd
+    vim.cmd = function(cmd, ...)
+      if type(cmd) == "string" and string.find(cmd, "G=") then
+        cmd_called = true
+      end
+      return old_cmd(cmd, ...)
+    end
+
+    -- Select the first line
+    vim.cmd("normal! 1G_V")
+    local start_row, start_col, end_row, end_col = syringe_job.get_visual_range()
+    local start_mark_id, end_mark_id = syringe_job.create_marks(bufnr, start_row, start_col, end_row, end_col)
+
+    local job_id = syringe_job.run_refactor("add some suffix", bufnr, start_mark_id, end_mark_id)
+    assert.is_not_nil(job_id)
+
+    local exit_codes = vim.fn.jobwait({ job_id }, 2000)
+    assert.are.equal(0, exit_codes[1])
+
+    vim.wait(100, function() return false end)
+
+    vim.cmd = old_cmd
+
+    assert.is_false(cmd_called, "Indentation command was called when auto_indent was false")
   end)
 end)
