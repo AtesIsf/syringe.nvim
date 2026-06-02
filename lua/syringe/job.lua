@@ -290,12 +290,9 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
         return
       end
 
-      -- Save window view if active window is viewing target buffer
+      -- Track the active window at the start of on_exit
       local win = vim.api.nvim_get_current_win()
       local view = nil
-      if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
-        view = vim.fn.winsaveview()
-      end
 
       -- Clear buffer active job state
       M.active_jobs[bufnr] = nil
@@ -327,6 +324,12 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
               table.remove(replacement_lines)
             end
             vim.api.nvim_buf_set_text(bufnr, s_row, s_col, e_row, e_col, replacement_lines)
+
+            -- Save window view *after* text replacement but *before* auto-indentation
+            if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+              view = vim.fn.winsaveview()
+            end
+
             if syringe.config.auto_indent and #replacement_lines > 0 then
               local start_line = s_row + 1
               local end_line = s_row + #replacement_lines

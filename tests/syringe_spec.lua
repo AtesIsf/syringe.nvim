@@ -806,15 +806,32 @@ describe("auto-indentation", function()
 
     local old_winsaveview = vim.fn.winsaveview
     local old_winrestview = vim.fn.winrestview
+    local old_cmd = vim.cmd
+
+    local cmd_called_before_save = false
+    local cmd_called_before_rest = false
+    local cmd_indent_called = false
+
+    vim.cmd = function(cmd, ...)
+      if type(cmd) == "string" and string.find(cmd, "G=") then
+        cmd_indent_called = true
+      end
+      return old_cmd(cmd, ...)
+    end
 
     vim.fn.winsaveview = function()
       winsaveview_called = true
+      -- Verify buffer is updated but indentation has not run yet
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)
+      assert.are.same({ "LINE ONE: HELLO - add some suffix" }, lines)
+      cmd_called_before_save = cmd_indent_called
       return mock_view
     end
 
     vim.fn.winrestview = function(view)
       assert.are.same(mock_view, view)
       winrestview_called = true
+      cmd_called_before_rest = cmd_indent_called
     end
 
     -- Run refactor
@@ -829,8 +846,11 @@ describe("auto-indentation", function()
     -- Restore original functions
     vim.fn.winsaveview = old_winsaveview
     vim.fn.winrestview = old_winrestview
+    vim.cmd = old_cmd
 
     assert.is_true(winsaveview_called, "winsaveview was not called")
     assert.is_true(winrestview_called, "winrestview was not called")
+    assert.is_false(cmd_called_before_save, "indentation cmd was run before winsaveview")
+    assert.is_true(cmd_called_before_rest, "indentation cmd was not run before winrestview")
   end)
 end)
