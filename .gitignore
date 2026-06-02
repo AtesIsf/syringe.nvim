@@ -1,0 +1,12 @@
+# Swap and temporary files
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Logs and debug outputs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
