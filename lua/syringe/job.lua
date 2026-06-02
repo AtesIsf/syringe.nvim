@@ -151,9 +151,9 @@ function M.extract_code_blocks(lines)
     end
   end
 
-  -- If no code blocks were found, fallback to returning the original lines
+  -- If no code blocks were found, return nil
   if not has_blocks or #code_lines == 0 then
-    return lines
+    return nil
   end
 
   return code_lines
@@ -275,11 +275,15 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
           -- Extract code block lines from stdout if present
           local replacement_lines = M.extract_code_blocks(stdout_data)
 
-          -- Strip trailing empty item if stream ended with a newline
-          if #replacement_lines > 0 and replacement_lines[#replacement_lines] == "" then
-            table.remove(replacement_lines)
+          if replacement_lines then
+            -- Strip trailing empty item if stream ended with a newline
+            if #replacement_lines > 0 and replacement_lines[#replacement_lines] == "" then
+              table.remove(replacement_lines)
+            end
+            vim.api.nvim_buf_set_text(bufnr, s_row, s_col, e_row, e_col, replacement_lines)
+          else
+            vim.notify("Syringe Error: No markdown code blocks found in agent output. Buffer unchanged.", vim.log.levels.ERROR)
           end
-          vim.api.nvim_buf_set_text(bufnr, s_row, s_col, e_row, e_col, replacement_lines)
         else
           vim.notify("Syringe: Failed to locate buffer position for text replacement.", vim.log.levels.ERROR)
         end

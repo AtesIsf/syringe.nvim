@@ -9,4 +9,7 @@ done
 
 INPUT=$(cat)
 UPPER=$(echo "$INPUT" | tr '[:lower:]' '[:upper:]')
+echo '```'
 echo -n "${UPPER} - ${PROMPT}"
+echo
+echo '```'

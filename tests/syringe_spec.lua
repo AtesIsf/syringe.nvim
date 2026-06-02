@@ -574,13 +574,13 @@ describe("markdown code block extraction", function()
     }, output)
   end)
 
-  it("should fallback to original lines if no code blocks are detected", function()
+  it("should return nil if no code blocks are detected", function()
     local input = {
       "just pure text",
       "without any markdown code delimiters",
     }
     local output = syringe_job.extract_code_blocks(input)
-    assert.are.same(input, output)
+    assert.is_nil(output)
   end)
 
   it("should successfully extract code block and replace buffer in-place during integration run", function()
@@ -611,6 +611,56 @@ describe("markdown code block extraction", function()
       "func main() {",
       "    println(\"Hello, Markdown World!\")",
       "}",
+    }, lines)
+
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
+  end)
+
+  it("should fail gracefully and notify the user if output does not contain markdown code blocks", function()
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+      "original line of code here",
+    })
+
+    syringe.setup({
+      cmd = "./tests/mock_agy_plain.sh",
+      prompt_suffix = "",
+    })
+
+    local notify_called = false
+    local notify_msg = ""
+    local notify_level
+    local old_notify = vim.notify
+    vim.notify = function(msg, level, opts)
+      notify_called = true
+      notify_msg = msg
+      notify_level = level
+    end
+
+    vim.cmd("normal! 1G_V")
+    local start_row, start_col, end_row, end_col = syringe_job.get_visual_range()
+    local start_mark_id, end_mark_id = syringe_job.create_marks(bufnr, start_row, start_col, end_row, end_col)
+
+    local job_id = syringe_job.run_refactor("some prompt", bufnr, start_mark_id, end_mark_id)
+    assert.is_not_nil(job_id)
+
+    local exit_codes = vim.fn.jobwait({ job_id }, 2000)
+    assert.are.equal(0, exit_codes[1])
+
+    vim.wait(100, function() return false end)
+
+    vim.notify = old_notify
+
+    assert.is_true(notify_called)
+    assert.are.equal("Syringe Error: No markdown code blocks found in agent output. Buffer unchanged.", notify_msg)
+    assert.are.equal(vim.log.levels.ERROR, notify_level)
+
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    assert.are.same({
+      "original line of code here",
     }, lines)
 
     if vim.api.nvim_buf_is_valid(bufnr) then
