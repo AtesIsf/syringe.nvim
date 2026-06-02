@@ -668,3 +668,29 @@ describe("markdown code block extraction", function()
     end
   end)
 end)
+
+describe("workspace context gathering", function()
+  it("should gather read-only context of other files with the same extension in the workspace", function()
+    local root = vim.fn.getcwd()
+    local active_file = root .. "/lua/syringe/init.lua"
+    
+    local context = syringe_job.get_workspace_context(active_file)
+    assert.is_true(#context > 0)
+    
+    -- Verify it contains content of job.lua but not init.lua itself
+    local has_job = false
+    local has_init = false
+    
+    for _, line in ipairs(context) do
+      if string.match(line, "^### Context File: lua/syringe/job.lua") then
+        has_job = true
+      end
+      if string.match(line, "^### Context File: lua/syringe/init.lua") then
+        has_init = true
+      end
+    end
+    
+    assert.is_true(has_job, "Should include job.lua context")
+    assert.is_false(has_init, "Should not include active file init.lua context")
+  end)
+end)

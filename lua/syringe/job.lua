@@ -134,6 +134,45 @@ function M.clear_marks(bufnr, start_mark_id, end_mark_id)
   pcall(vim.api.nvim_buf_del_extmark, bufnr, M.ns_id, end_mark_id)
 end
 
+---Gather read-only code files in the Neovim working directory as context
+---@param active_file string Absolute path of the currently active file
+---@return string[] lines The formatted context block
+function M.get_workspace_context(active_file)
+  local context_lines = {}
+  if active_file == nil or active_file == "" then
+    return context_lines
+  end
+
+  local ext = vim.fn.fnamemodify(active_file, ":e")
+  if ext and ext ~= "" then
+    local root = vim.fn.getcwd()
+    -- Glob files matching the active extension recursively
+    local files = vim.fn.globpath(root, "**/*." .. ext, true, true)
+
+    for _, filepath in ipairs(files) do
+      -- Exclude the active file itself to prevent duplicate context
+      local resolved_file = vim.fn.resolve(filepath)
+      local resolved_active = vim.fn.resolve(active_file)
+      if resolved_file ~= resolved_active and vim.fn.filereadable(filepath) == 1 then
+        local rel_path = filepath
+        if filepath:sub(1, #root) == root then
+          rel_path = filepath:sub(#root + 2) -- skip slash
+        end
+        table.insert(context_lines, "---")
+        table.insert(context_lines, string.format("### Context File: %s (Read-Only)", rel_path))
+        table.insert(context_lines, "```" .. ext)
+        local lines = vim.fn.readfile(filepath)
+        for _, line in ipairs(lines) do
+          table.insert(context_lines, line)
+        end
+        table.insert(context_lines, "```")
+        table.insert(context_lines, "")
+      end
+    end
+  end
+  return context_lines
+end
+
 ---Extracts code block content from markdown-formatted lines
 ---@param lines string[]
 ---@return string[]
@@ -328,8 +367,22 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
     cancelled = false,
   }
 
-  -- 5. Send selection text to stdin and close channel
-  local input_str = table.concat(selection_text, "\n")
+  -- 5. Send selection text and workspace context to stdin and close channel
+  local active_file = vim.api.nvim_buf_get_name(bufnr)
+  local full_input_lines = {}
+  for _, line in ipairs(selection_text) do
+    table.insert(full_input_lines, line)
+  end
+
+  local context_lines = M.get_workspace_context(active_file)
+  if #context_lines > 0 then
+    table.insert(full_input_lines, "")
+    for _, line in ipairs(context_lines) do
+      table.insert(full_input_lines, line)
+    end
+  end
+
+  local input_str = table.concat(full_input_lines, "\n")
   vim.fn.chansend(job_id, input_str)
   vim.fn.chanclose(job_id, "stdin")
 
