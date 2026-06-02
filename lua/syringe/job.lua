@@ -290,6 +290,13 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
         return
       end
 
+      -- Save window view if active window is viewing target buffer
+      local win = vim.api.nvim_get_current_win()
+      local view = nil
+      if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+        view = vim.fn.winsaveview()
+      end
+
       -- Clear buffer active job state
       M.active_jobs[bufnr] = nil
 
@@ -342,6 +349,11 @@ function M.run_refactor(prompt, bufnr, start_mark_id, end_mark_id)
           err_msg = "Job exited with code " .. tostring(exit_code)
         end
         vim.notify("Syringe CLI Error: " .. err_msg, vim.log.levels.ERROR)
+      end
+
+      -- Restore window view to preserve cursor/scroll position
+      if view and vim.api.nvim_win_is_valid(win) then
+        vim.fn.winrestview(view)
       end
     end,
   })

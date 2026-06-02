@@ -791,4 +791,46 @@ describe("auto-indentation", function()
 
     assert.is_false(cmd_called, "Indentation command was called when auto_indent was false")
   end)
+
+  it("should save and restore window view on exit to preserve cursor position", function()
+    local syringe_mod = require("syringe")
+    syringe_mod.setup({
+      cmd = "./tests/mock_agy.sh",
+      prompt_suffix = "",
+      auto_indent = true,
+    })
+
+    local winsaveview_called = false
+    local winrestview_called = false
+    local mock_view = { lnum = 2, col = 5 }
+
+    local old_winsaveview = vim.fn.winsaveview
+    local old_winrestview = vim.fn.winrestview
+
+    vim.fn.winsaveview = function()
+      winsaveview_called = true
+      return mock_view
+    end
+
+    vim.fn.winrestview = function(view)
+      assert.are.same(mock_view, view)
+      winrestview_called = true
+    end
+
+    -- Run refactor
+    vim.cmd("normal! 1G_V")
+    local start_row, start_col, end_row, end_col = syringe_job.get_visual_range()
+    local start_mark_id, end_mark_id = syringe_job.create_marks(bufnr, start_row, start_col, end_row, end_col)
+    local job_id = syringe_job.run_refactor("add some suffix", bufnr, start_mark_id, end_mark_id)
+
+    vim.fn.jobwait({ job_id }, 2000)
+    vim.wait(100, function() return false end)
+
+    -- Restore original functions
+    vim.fn.winsaveview = old_winsaveview
+    vim.fn.winrestview = old_winrestview
+
+    assert.is_true(winsaveview_called, "winsaveview was not called")
+    assert.is_true(winrestview_called, "winrestview was not called")
+  end)
 end)
